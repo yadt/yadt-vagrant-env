@@ -11,7 +11,7 @@ PUB_KEY=$(ls -1 /vagrant/*.pub)
 USERNAME=$(basename $PUB_KEY .pub)
 
 # initial environment/repos
-cp -rv /vagrant/root/* /
+cp -r /vagrant/root/* /
 
 # adding user
 groupadd admins || :
@@ -35,5 +35,3 @@ for SCRIPT in /vagrant/postinstall/*; do
     [[ -x $SCRIPT ]] || continue
     $SCRIPT
 done
-
-echo "done."
