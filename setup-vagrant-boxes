@@ -56,7 +56,14 @@ PUBLIC_KEY=$(readlink -e $PUBLIC_KEY)
 IMAGE_FILENAME=$(readlink -e $IMAGE_FILENAME)
 
 get_free_ip() {
-    echo $NET_PREFIX.111
+    for i in $(seq 100 199); do
+        test_ip=$NET_PREFIX.$i
+        for used_ip in $(cat boxes/*/ip 2> /dev/null); do
+            [[ $test_ip == $used_ip ]] && continue 2
+        done
+        echo $test_ip
+        break
+    done
 }
 
 echo "-- initializing boxes"
