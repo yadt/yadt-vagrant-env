@@ -14,21 +14,26 @@ BOXES_DIR=$(pwd)/boxes
 usage() {
     local EXIT_CODE=${1:-0}
     echo
-    echo "usage: $SCRIPT [box_name/box_ip [...]]"
+    echo "usage: $SCRIPT"
     echo
     exit $EXIT_CODE
 }
 
 if [[ $(id -u) == 0 ]]; then
+    echo
     echo "root must not run this script directly"
+    echo
     usage 1
 fi
 
 mkdir -p tmp cache logs
 
 if [[ ! -r $PUBLIC_KEY ]]; then
+    echo
     echo "your public key $PUBLIC_KEY cannot be found; consider using"
-    echo "ssh-add -L > $PUBLIC_KEY"
+    echo
+    echo "    ssh-add -L > $PUBLIC_KEY"
+    echo
     usage 1
 fi
 
@@ -37,8 +42,11 @@ if [[ ! -e $IMAGE_FILENAME ]]; then
 fi
 
 if [[ ! -e $NET_PREFIX_FILE ]]; then
+    echo
     echo "net prefix not defined; for example use"
-    echo "echo 192.168.33 > $NET_PREFIX_FILE"
+    echo
+    echo "    echo 192.168.33 > $NET_PREFIX_FILE"
+    echo
     usage 1
 fi
 NET_PREFIX=$(cat $NET_PREFIX_FILE)
@@ -93,7 +101,13 @@ for BOXDIR in boxes/*; do
 done
 
 if [[ -z $BOX_FOUND ]]; then
-    echo "no dirs found under boxes/*; create dir with boxname, then rerun script"
+    echo
+    echo "no dirs found under boxes/"
+    echo "consider running"
+    echo
+    echo "    mkdir boxes/myfirstbox"
+    echo
+    echo "then rerun $SCRIPT"
     exit 0
 fi
 
@@ -113,7 +127,7 @@ for BOXDIR in boxes/*; do
 done
 
 if ! diff tmp/hosts /etc/hosts > /dev/null; then
-    sudo -p "---- installing modified /etc/hosts, superuser role required: " cp -b tmp/hosts /etc/hosts
+    sudo -p "---- installing modified /etc/hosts, superuser role required: " cp tmp/hosts /etc/hosts
 fi
 
 echo
