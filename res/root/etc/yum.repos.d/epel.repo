@@ -1,0 +1,6 @@
+[epel-6]
+name=epel 6
+baseurl=http://dl.fedoraproject.org/pub/epel/6/i386/
+enabled=1
+gpgcheck=0
+

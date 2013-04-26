@@ -1,0 +1,128 @@
+#!/bin/bash
+set -u -e -E -C -o pipefail
+
+SCRIPT=$(basename $0)
+PUBLIC_KEY=cache/$USER.pub
+IMAGE_URL="http://developer.nrel.gov/downloads/vagrant-boxes/CentOS-6.4-x86_64-v20130309.box"
+IMAGE_FILENAME=cache/$(basename $IMAGE_URL)
+NET_PREFIX_FILE=net-prefix
+LOG_FILE=$(pwd)/logs/$SCRIPT.log
+RES_DIR=$(pwd)/res
+
+
+usage() {
+    local EXIT_CODE=${1:-0}
+    echo
+    echo "usage: $SCRIPT [box_name/box_ip [...]]"
+    echo
+    exit $EXIT_CODE
+}
+
+if [[ $(id -u) == 0 ]]; then
+    echo "root must not run this script directly"
+    usage 1
+fi
+
+mkdir -p tmp cache logs
+
+if [[ ! -r $PUBLIC_KEY ]]; then
+    echo "your public key $PUBLIC_KEY cannot be found; consider using"
+    echo "ssh-add -L > $PUBLIC_KEY"
+    usage 1
+fi
+
+if [[ ! -e $IMAGE_FILENAME ]]; then
+    curl --retry 3 -# -o $IMAGE_FILENAME $IMAGE_URL
+fi
+
+if [[ ! -e $NET_PREFIX_FILE ]]; then
+    echo "net prefix not defined; for example use"
+    echo "echo 192.168.33 > $NET_PREFIX_FILE"
+    usage 1
+fi
+NET_PREFIX=$(cat $NET_PREFIX_FILE)
+
+cat <<SUMMARY
+
+-- creating boxes with the following settings:
+            user: $USER
+      public key: $PUBLIC_KEY
+       box image: $IMAGE_FILENAME
+      net prefix: $NET_PREFIX
+
+SUMMARY
+
+PUBLIC_KEY=$(readlink -e $PUBLIC_KEY)
+IMAGE_FILENAME=$(readlink -e $IMAGE_FILENAME)
+
+get_free_ip() {
+    echo $NET_PREFIX.111
+}
+
+echo "-- initializing boxes"
+BOX_FOUND=
+for BOXDIR in boxes/*; do
+    [[ -d $BOXDIR ]] || continue
+    BOX_FOUND=yes
+    BOXNAME=$(basename $BOXDIR)
+    echo "---- box $BOXNAME found"
+
+    if [[ ! -e $BOXDIR/Vagrantfile ]]; then
+        echo "---- initializing $BOXNAME"
+        (
+            cd $BOXDIR
+            vagrant init box $IMAGE_FILENAME >> $LOG_FILE
+            IP=$(get_free_ip)
+            echo "---- assigning ip $IP"
+            echo $IP > ip
+            sed -i.bak "/^\s*#/d;/^\s*$/d;/box_url/a  config.vm.network :private_network, ip: \"$IP\"\n  config.vm.hostname = \"$BOXNAME\"" Vagrantfile
+        )
+    fi
+
+    echo "---- adding public key and some base files"
+    cp $PUBLIC_KEY $BOXDIR/
+    cp -r $RES_DIR/* $BOXDIR/
+done
+
+if [[ -z $BOX_FOUND ]]; then
+    echo "no dirs found under boxes/*; create dir with boxname, then rerun script"
+    exit 0
+fi
+
+echo
+echo "-- configuring hostname resolution"
+echo "---- removing all old host/ip mappings with network $NET_PREFIX"
+TMP_HOSTS=tmp/hosts
+rm -f $TMP_HOSTS && sed "/$NET_PREFIX/d" /etc/hosts > $TMP_HOSTS
+
+echo "---- adding boxes to /etc/hosts"
+for BOXDIR in boxes/*; do
+    [[ -d $BOXDIR ]] || continue
+    IP=$(cat $BOXDIR/ip)
+    BOXNAME=$(basename $BOXDIR)
+    echo "------ adding mapping $BOXNAME - $IP"
+    sed -i "$ a $IP\t$BOXNAME\t\# auto-added by $SCRIPT" $TMP_HOSTS
+done
+
+if ! diff tmp/hosts /etc/hosts > /dev/null; then
+    sudo -p "---- installing modified /etc/hosts, superuser role required: " cp -b tmp/hosts /etc/hosts
+fi
+
+echo
+echo "-- starting boxes"
+for BOXDIR in boxes/*; do
+    [[ -d $BOXDIR ]] || continue
+    IP=$(cat $BOXDIR/ip)
+    BOXNAME=$(basename $BOXDIR)
+    echo "---- starting $BOXNAME (this may take a few minutes)"
+    (
+        cd $BOXDIR
+        vagrant up >> $LOG_FILE
+
+        echo "---- box is up and running, running post-install now"
+        vagrant ssh -- sudo /vagrant/postinstall-box
+        echo "---- $BOXNAME setup successfull"
+    )
+done
+
+echo "done."

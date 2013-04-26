@@ -1,0 +1,39 @@
+#!/bin/bash
+set -u -e -E -C -o pipefail
+
+[[ $(id -u) == 0 ]] || {
+    echo "you need to be root to run this script."
+    exit 1
+}
+
+HOSTNAME=$(hostname -s)
+PUB_KEY=$(ls -1 /vagrant/*.pub)
+USERNAME=$(basename $PUB_KEY .pub)
+
+# initial environment/repos
+cp -rv /vagrant/root/* /
+
+# adding user
+groupadd admins || :
+adduser -G admins $USERNAME || :
+echo vagrant | sudo passwd --stdin $USERNAME
+
+# configuring passwordless ssh access
+SSH_DIR=/home/$USERNAME/.ssh
+AUTH_KEYS=$SSH_DIR/authorized_keys
+
+mkdir -p $SSH_DIR && chmod 700 $SSH_DIR
+
+touch $AUTH_KEYS
+chmod 400 $AUTH_KEYS
+cat $PUB_KEY >> $AUTH_KEYS
+
+chown -R $USERNAME $SSH_DIR
+
+# post-install
+for SCRIPT in /vagrant/postinstall/*; do
+    [[ -x $SCRIPT ]] || continue
+    $SCRIPT
+done
+
+echo "done."

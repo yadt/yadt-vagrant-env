@@ -1,0 +1,6 @@
+#!/bin/bash
+set -u -e -E
+
+yum install -y -q yadt-mock-services-simple
+mv /etc/yadt.services /vagrant
+ln -sf /vagrant/yadt.services /etc/yadt.services
