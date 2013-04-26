@@ -4,6 +4,6 @@ set -u -e -E
 BOX=${1:?no box given}
 
 cd boxes/$BOX
-vagrant destroy
+vagrant destroy -f
 rm -rf *
 
