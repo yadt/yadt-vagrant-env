@@ -130,6 +130,15 @@ if ! diff tmp/hosts /etc/hosts > /dev/null; then
     sudo -p "---- installing modified /etc/hosts, superuser role required: " cp tmp/hosts /etc/hosts
 fi
 
+echo "-- generating target file"
+rm -f target
+echo "hosts:" > target
+for BOXDIR in boxes/*; do
+    BOX_NAME=`basename $BOXDIR`
+    echo "--- adding $BOX_NAME to target"
+    echo "  - $BOX_NAME">> target
+done
+
 echo
 echo "-- starting boxes"
 for BOXDIR in boxes/*; do
