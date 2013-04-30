@@ -11,14 +11,14 @@ PUB_KEY=$(ls -1 /vagrant/*.pub)
 USERNAME=$(basename $PUB_KEY .pub)
 
 echo "-- initializing environment/repos"
-cp -r /vagrant/root/* /
+cp -r /vagrant/init-root/* /
 
 echo
 echo "-- adding user/group"
 groupadd admins || :
 adduser -G admins $USERNAME || :
 echo vagrant | sudo passwd --stdin $USERNAME
-echo "---- when everything goes wrong: the password of $USERNAME is 'vagrant'"
+#echo "---- when everything goes wrong: the password of $USERNAME is 'vagrant'"
 
 echo
 echo "-- configuring passwordless ssh access"
