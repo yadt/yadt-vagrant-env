@@ -1,9 +1,21 @@
 #!/bin/bash
 set -u -e -E
 
-BOX=${1:?no box given}
+: ${1:?no box given?}
 
-cd boxes/$BOX
-vagrant destroy -f
-rm -rf *
+BOXES=$@
+
+[[ $1 == "_all" ]] && BOXES=$(find boxes -maxdepth 1 -mindepth 1 -type d)
+
+for BOX in $BOXES; do
+    echo
+    echo "-- destroying $BOX"
+    (
+        cd $BOX
+        vagrant destroy -f || :
+        rm -rf Vagrantfile* postinstall* init-root* ip
+        echo "---- remaining resources after destroy:"
+        ls -l
+    )
+done
 
