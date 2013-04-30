@@ -78,7 +78,6 @@ get_free_ip() {
 echo "-- initializing boxes"
 BOX_FOUND=
 for BOXDIR in boxes/*; do
-    [[ -d $BOXDIR ]] || continue
     BOX_FOUND=yes
     BOXNAME=$(basename $BOXDIR)
     echo "---- box $BOXNAME found"
@@ -90,8 +89,13 @@ for BOXDIR in boxes/*; do
             vagrant init box $IMAGE_FILENAME >> $LOG_FILE
             IP=$(get_free_ip)
             echo "------ assigning ip $IP"
-            echo $IP > ip
-            sed -i.bak "/^\s*#/d;/^\s*$/d;/box_url/a  config.vm.network :private_network, ip: \"$IP\"\n  config.vm.hostname = \"$BOXNAME\"" Vagrantfile
+            rm -f ip && echo $IP > ip
+            sed -i.bak "
+                /^\s*#/d
+                /^\s*$/d
+                /box_url/a\  config.vm.network :private_network, ip: \"$IP\"\n  config.vm.hostname = \"$BOXNAME\" \ 
+                /box_url/a\  config.vm.provision :shell, :path => \"postinstall-box\"
+            " Vagrantfile
         )
     fi
 
@@ -130,13 +134,14 @@ if ! diff tmp/hosts /etc/hosts > /dev/null; then
     sudo -p "---- installing modified /etc/hosts, superuser role required: " cp tmp/hosts /etc/hosts
 fi
 
-echo "--- generating target file"
-rm -f target
-echo "hosts:" > target
+# should be moved to a dedicated yadtshell box lateron
+echo
+echo "-- generating yadt target file"
+rm -f target && echo "hosts:" > target
 for BOXDIR in boxes/*; do
     BOX_NAME=`basename $BOXDIR`
     echo "---- adding $BOX_NAME to target"
-    echo "  - $BOX_NAME">> target
+    echo "- $BOX_NAME">> target
 done
 
 echo
@@ -148,12 +153,6 @@ for BOXDIR in boxes/*; do
     echo "---- starting $BOXNAME (this may take a few minutes)"
     (
         cd $BOXDIR
-        vagrant up >> $LOG_FILE
-
-        echo "------ box is up and running, running post-install now"
-        vagrant ssh -- sudo /vagrant/postinstall-box
-        echo "------ $BOXNAME setup successfull"
+        vagrant up
     )
 done
-
-echo "done."
