@@ -1,0 +1,10 @@
+#!/bin/bash
+set -u -e -E
+
+yum install -y -q yadt-client
+
+for DIR in /var/log/yadt /var/cache/yadt; do
+    chmod a+rwx $DIR
+    chown -R vagrant $DIR
+    chgrp -R admins $DIR
+done

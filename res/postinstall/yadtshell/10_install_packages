@@ -1,0 +1,4 @@
+#!/bin/bash 
+set -e -E -u
+
+yum install -y dummy-config yadtshell
