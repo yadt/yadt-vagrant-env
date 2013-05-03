@@ -6,16 +6,19 @@ set -u -e -E -C -o pipefail
     exit 1
 }
 
-ROLE=${1:-yadtclient}
+USERNAME=${1:?USERNAME not set!}
+shift
+ROLES=$*
+[[ -z $ROLES ]] && ROLES=yadtclient
 HOSTNAME=$(hostname -s)
-PUB_KEY=$(ls -1 /vagrant/*.pub)
-USERNAME=$(basename $PUB_KEY .pub)
+PUB_KEY=/vagrant/vagrant.pub
 
 echo "-- initializing environment/repos"
 cp -r /vagrant/init-root/* /
 
 echo
 echo "-- adding user/group"
+echo "---- username: $USERNAME"
 groupadd admins || :
 adduser -G admins $USERNAME || :
 echo vagrant | sudo passwd --stdin $USERNAME
@@ -27,16 +30,19 @@ SSH_DIR=/home/$USERNAME/.ssh
 AUTH_KEYS=$SSH_DIR/authorized_keys
 mkdir -p $SSH_DIR && chmod 700 $SSH_DIR
 touch $AUTH_KEYS
-chmod 400 $AUTH_KEYS
+chmod 600 $AUTH_KEYS
 cat $PUB_KEY >> $AUTH_KEYS
 chown -R $USERNAME $SSH_DIR
 
 echo
 echo "-- applying custom postinstall scripts"
-for SCRIPT in /vagrant/postinstall/all/* /vagrant/postinstall/$ROLE/*; do
-    [[ -x $SCRIPT ]] || continue
-    echo "---- applying $SCRIPT"
-    $SCRIPT
+for STAGE in all $ROLES; do
+    echo "---- postinstall stage $STAGE"
+    for SCRIPT in /vagrant/postinstall/$STAGE/*; do
+        [[ -x $SCRIPT ]] || continue
+        echo "------ applying $SCRIPT"
+        $SCRIPT $USERNAME
+    done
 done
 
 echo "done."

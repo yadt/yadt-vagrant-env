@@ -2,7 +2,6 @@
 set -u -e -E -C -o pipefail
 
 SCRIPT=$(basename $0)
-PUBLIC_KEY=cache/$USER.pub
 FALLBACK_IMAGE_URL="http://developer.nrel.gov/downloads/vagrant-boxes/CentOS-6.4-x86_64-v20130309.box"
 NET_PREFIX_FILE=net-prefix
 LOG_FILE=$(pwd)/logs/$SCRIPT.log
@@ -27,15 +26,6 @@ if [[ $(id -u) == 0 ]]; then
 fi
 
 mkdir -p tmp cache logs
-
-if [[ ! -r $PUBLIC_KEY ]]; then
-    echo
-    echo "your public key $PUBLIC_KEY cannot be found; consider using"
-    echo
-    echo "    ssh-add -L > $PUBLIC_KEY"
-    echo
-    usage 1
-fi
 
 if [[ ! -e $NET_PREFIX_FILE ]]; then
     echo
@@ -62,14 +52,12 @@ cat <<SUMMARY
 
 -- creating boxes with the following settings:
             user: $USER
-      public key: $PUBLIC_KEY
        box image: $IMAGE_FILENAME
       net prefix: $NET_PREFIX
         repo dir: $REPO_DIR
 
 SUMMARY
 
-PUBLIC_KEY=$(readlink -e $PUBLIC_KEY)
 IMAGE_FILENAME=$(readlink -e $IMAGE_FILENAME)
 
 get_free_ip() {
@@ -116,14 +104,13 @@ Vagrant.configure("2") do |config|
   config.vm.network :private_network, ip: "$IP"
   config.vm.hostname = "$BOXNAME"
   config.vm.synced_folder "$REPO_DIR", "/repo"
-  config.vm.provision :shell, :path => "provision-box", :args => "$ROLE"
+  config.vm.provision :shell, :path => "provision-box", :args => "$USER $ROLE"
 end
 VAGRANTFILE
         )
     fi
 
     echo "------ adding public key and some base files"
-    cp $PUBLIC_KEY $BOXDIR/
     cp -r $RES_DIR/* $BOXDIR/
 done
 
@@ -159,15 +146,17 @@ if ! diff tmp/hosts /etc/hosts > /dev/null; then
     echo "---- leaving superuser context"
 fi
 
-# should be moved to a dedicated yadtshell box lateron
-echo
-echo "-- generating yadt target file"
-rm -f target && echo "hosts:" > target
-for BOXDIR in boxes/*; do
-    BOX_NAME=`basename $BOXDIR`
-    echo "---- adding $BOX_NAME to target"
-    echo "- $BOX_NAME">> target
-done
+if [[ -e $HOME/.ssh/known_hosts ]]; then
+    echo
+    echo "-- clearing local known_hosts"
+    for BOXDIR in boxes/*; do
+        BOX_NAME=`basename $BOXDIR`
+        IP=$(cat $BOXDIR/ip)
+        echo "---- removing known_hosts entries for $BOX_NAME and $IP"
+        ssh-keygen -f $HOME/.ssh/known_hosts -R $BOX_NAME
+        ssh-keygen -f $HOME/.ssh/known_hosts -R $IP
+    done
+fi
 
 echo
 echo "-- starting boxes"
@@ -181,3 +170,25 @@ for BOXDIR in boxes/*; do
         vagrant up
     )
 done
+
+echo
+echo "-- configuring yadt"
+TARGET_FILE=cache/target
+echo "---- generating $TARGET_FILE"
+rm -f $TARGET_FILE && echo "hosts:" > $TARGET_FILE
+for BOXDIR in boxes/*; do
+    ROLE=$(cat $BOXDIR/role)
+    if [[ $ROLE != "yadtshell" ]]; then
+        BOX_NAME=`basename $BOXDIR`
+        echo "---- adding $BOX_NAME to $TARGET_FILE"
+        echo "- $BOX_NAME">> $TARGET_FILE
+    fi
+done
+echo "---- distributing $TARGET_FILE"
+for BOXDIR in boxes/*; do
+    ROLE=$(cat $BOXDIR/role)
+    if [[ $ROLE == "yadtshell" ]]; then
+        cp $TARGET_FILE $BOXDIR
+    fi
+done
+

@@ -1,4 +1,8 @@
-#!/bin/bash 
+#!/bin/bash
 set -e -E -u
 
 yum install -y dummy-config yadtshell
+YADTSHELL_LOG_DIR=/var/log/yadtshell
+mkdir -p $YADTSHELL_LOG_DIR
+chgrp -R admins $YADTSHELL_LOG_DIR
+chmod -R g+w $YADTSHELL_LOG_DIR
