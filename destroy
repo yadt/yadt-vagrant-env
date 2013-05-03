@@ -13,7 +13,7 @@ for BOX in $BOXES; do
     (
         cd $BOX
         vagrant destroy -f || :
-        rm -rf Vagrantfile* postinstall* init-root* ip provision*
+        rm -rf Vagrantfile* postinstall* init-root* ip provision* target
         echo "---- remaining resources after destroy:"
         ls -l
     )
