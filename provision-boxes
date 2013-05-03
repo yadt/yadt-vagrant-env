@@ -3,10 +3,7 @@ set -u -e -E -C -o pipefail
 
 SCRIPT=$(basename $0)
 PUBLIC_KEY=cache/$USER.pub
-#IMAGE_URL="http://developer.nrel.gov/downloads/vagrant-boxes/CentOS-6.4-x86_64-v20130309.box"
-#IMAGE_FILENAME=cache/$(basename $IMAGE_URL)
-IMAGE_URL=__nyd__
-IMAGE_FILENAME=cache/centos64-x86_64.box
+FALLBACK_IMAGE_URL="http://developer.nrel.gov/downloads/vagrant-boxes/CentOS-6.4-x86_64-v20130309.box"
 NET_PREFIX_FILE=net-prefix
 LOG_FILE=$(pwd)/logs/$SCRIPT.log
 RES_DIR=$(pwd)/res
@@ -40,10 +37,6 @@ if [[ ! -r $PUBLIC_KEY ]]; then
     usage 1
 fi
 
-if [[ ! -e $IMAGE_FILENAME ]]; then
-    curl --retry 3 -# -o $IMAGE_FILENAME $IMAGE_URL
-fi
-
 if [[ ! -e $NET_PREFIX_FILE ]]; then
     echo
     echo "net prefix not defined; for example use"
@@ -53,6 +46,17 @@ if [[ ! -e $NET_PREFIX_FILE ]]; then
     usage 1
 fi
 NET_PREFIX=$(cat $NET_PREFIX_FILE)
+
+echo "-- checking vagrant image"
+IMAGES=($(find cache -name "*.box"))
+if [[ -z $IMAGES ]]; then
+    echo "---- no images found in cache/, loading fallback image"
+    IMAGE_FILENAME=$(basename $FALLBACK_IMAGE_URL)
+    curl --retry 3 -# -o $IMAGE_FILENAME $FALLBACK_IMAGE_URL
+else
+    IMAGE_FILENAME=${IMAGES[1]}
+    echo "---- image $IMAGE_FILENAME selected"
+fi
 
 cat <<SUMMARY
 
@@ -108,7 +112,7 @@ for BOXDIR in boxes/*; do
             cat << VAGRANTFILE > Vagrantfile
 Vagrant.configure("2") do |config|
   config.vm.box = "box"
-  config.vm.box_url = "$IMAGE_URL"
+  config.vm.box_url = "$FALLBACK_IMAGE_URL"
   config.vm.network :private_network, ip: "$IP"
   config.vm.hostname = "$BOXNAME"
   config.vm.synced_folder "$REPO_DIR", "/repo"
@@ -150,7 +154,9 @@ for BOXDIR in boxes/*; do
 done
 
 if ! diff tmp/hosts /etc/hosts > /dev/null; then
-    sudo -p "---- installing modified /etc/hosts, superuser role required: " cp tmp/hosts /etc/hosts
+    echo "---- entering superuser context"
+    sudo -p "---- installing modified /etc/hosts, superuser help required: " cp tmp/hosts /etc/hosts
+    echo "---- leaving superuser context"
 fi
 
 # should be moved to a dedicated yadtshell box lateron
