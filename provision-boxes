@@ -2,13 +2,17 @@
 set -u -e -E -C -o pipefail
 
 SCRIPT=$(basename $0)
-FALLBACK_IMAGE_URL="http://developer.nrel.gov/downloads/vagrant-boxes/CentOS-6.4-x86_64-v20130309.box"
+#FALLBACK_IMAGE_URL="http://developer.nrel.gov/downloads/vagrant-boxes/CentOS-6.4-x86_64-v20130309.box"
+FALLBACK_IMAGE_URL="https://dl.dropboxusercontent.com/s/phajfro2lb4h9qj/centos64-x86_64.box"
 NET_PREFIX_FILE=net-prefix
 LOG_FILE=$(pwd)/logs/$SCRIPT.log
 RES_DIR=$(pwd)/res
 BOXES_DIR=$(pwd)/boxes
 REPO_DIR=$(pwd)/repo
+CACHE_DIR=$(pwd)/cache
 
+MIN_VAGRANT_VERSION=1.2.2
+MIN_VIRTUALBOX_VERSION=4.2
 
 usage() {
     local EXIT_CODE=${1:-0}
@@ -18,14 +22,34 @@ usage() {
     exit $EXIT_CODE
 }
 
+echo "-- checking environment"
+
 if [[ $(id -u) == 0 ]]; then
-    echo
     echo "root must not run this script directly"
-    echo
-    usage 1
+    exit 1
 fi
 
-mkdir -p tmp cache logs
+echo "---- vagrant"
+VAGRANT_VERSION=$(vagrant --version | sed "s/[a-zA-Z ]//g" || :)
+if [[ -z $VAGRANT_VERSION ]]; then
+    echo "vagrant executable not found, at least $MIN_VAGRANT_VERSION needed."
+    exit 1
+fi
+if [[ $VAGRANT_VERSION < $MIN_VAGRANT_VERSION ]]; then
+    echo "vagrant version $VAGRANT_VERSION too old, at least $MIN_VAGRANT_VERSION needed."
+    exit 1
+fi
+
+echo "---- VirtualBox"
+VIRTUALBOX_VERSION=$(VBoxManage --version | sed "s/_.*//" || :)
+if [[ -z $VIRTUALBOX_VERSION ]]; then
+    echo "VirtualBox installation not found, at least $MIN_VIRTUALBOX_VERSION needed."
+    exit 1
+fi
+if [[ $VIRTUALBOX_VERSION < $MIN_VIRTUALBOX_VERSION ]]; then
+    echo "VirtualBox version $VIRTUALBOX_VERSION too old, at least $MIN_VIRTUALBOX_VERSION needed."
+    exit 1
+fi
 
 if [[ ! -e $NET_PREFIX_FILE ]]; then
     echo
@@ -33,19 +57,22 @@ if [[ ! -e $NET_PREFIX_FILE ]]; then
     echo
     echo "    echo 192.168.33 > $NET_PREFIX_FILE"
     echo
-    usage 1
+    exit 1
 fi
 NET_PREFIX=$(cat $NET_PREFIX_FILE)
 
+mkdir -p tmp $CACHE_DIR logs
+
+echo
 echo "-- checking vagrant image"
 IMAGES=($(find cache -name "*.box"))
-if [[ -z $IMAGES ]]; then
+if [[ ${#IMAGES[@]} == 0 ]]; then
     echo "---- no images found in cache/, loading fallback image"
-    IMAGE_FILENAME=$(basename $FALLBACK_IMAGE_URL)
+    IMAGE_FILENAME=$CACHE_DIR/$(basename $FALLBACK_IMAGE_URL)
     curl --retry 3 -# -o $IMAGE_FILENAME $FALLBACK_IMAGE_URL
 else
-    IMAGE_FILENAME=${IMAGES[1]}
-    echo "---- image $IMAGE_FILENAME selected"
+    IMAGE_FILENAME=$PWD/${IMAGES[0]}
+    echo "---- selecting $IMAGE_FILENAME"
 fi
 
 cat <<SUMMARY
@@ -100,7 +127,7 @@ for BOXDIR in boxes/*; do
             cat << VAGRANTFILE > Vagrantfile
 Vagrant.configure("2") do |config|
   config.vm.box = "box"
-  config.vm.box_url = "$FALLBACK_IMAGE_URL"
+  config.vm.box_url = "$IMAGE_FILENAME"
   config.vm.network :private_network, ip: "$IP"
   config.vm.hostname = "$BOXNAME"
   config.vm.synced_folder "$REPO_DIR", "/repo"
@@ -153,8 +180,8 @@ if [[ -e $HOME/.ssh/known_hosts ]]; then
         BOX_NAME=`basename $BOXDIR`
         IP=$(cat $BOXDIR/ip)
         echo "---- removing known_hosts entries for $BOX_NAME and $IP"
-        ssh-keygen -f $HOME/.ssh/known_hosts -R $BOX_NAME
-        ssh-keygen -f $HOME/.ssh/known_hosts -R $IP
+        ssh-keygen -q -f $HOME/.ssh/known_hosts -R $BOX_NAME
+        ssh-keygen -q -f $HOME/.ssh/known_hosts -R $IP
     done
 fi
 
