@@ -1,3 +1,4 @@
 #!/bin/bash
 
-for BOX in `ls boxes`; do echo "Destroying $BOX"; ./destroy $BOX; done
+echo "DEPRECATED! use './destroy _all' instead..."
+for BOX in `ls boxes`; do echo "Destroying $BOX"; ./destroy boxes/$BOX; done
