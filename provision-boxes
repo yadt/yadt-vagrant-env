@@ -22,7 +22,7 @@ usage() {
     exit $EXIT_CODE
 }
 
-echo "-- checking environment"
+echo "-- checking installation"
 
 if [[ $(id -u) == 0 ]]; then
     echo "root must not run this script directly"
@@ -180,8 +180,8 @@ if [[ -e $HOME/.ssh/known_hosts ]]; then
         BOX_NAME=`basename $BOXDIR`
         IP=$(cat $BOXDIR/ip)
         echo "---- removing known_hosts entries for $BOX_NAME and $IP"
-        ssh-keygen -q -f $HOME/.ssh/known_hosts -R $BOX_NAME
-        ssh-keygen -q -f $HOME/.ssh/known_hosts -R $IP
+        ssh-keygen -q -f $HOME/.ssh/known_hosts -R $BOX_NAME 2> /dev/null
+        ssh-keygen -q -f $HOME/.ssh/known_hosts -R $IP 2> /dev/null
     done
 fi
 
@@ -198,16 +198,18 @@ for BOXDIR in boxes/*; do
     )
 done
 
+
+
 echo
 echo "-- configuring yadt"
 TARGET_FILE=cache/target
-echo "---- generating $TARGET_FILE"
+echo "---- generating target file"
 rm -f $TARGET_FILE && echo "hosts:" > $TARGET_FILE
 for BOXDIR in boxes/*; do
     ROLE=$(cat $BOXDIR/role)
     if [[ $ROLE != "yadtshell" ]]; then
         BOX_NAME=`basename $BOXDIR`
-        echo "---- adding $BOX_NAME to $TARGET_FILE"
+        echo "------ adding $BOX_NAME to $TARGET_FILE"
         echo "- $BOX_NAME">> $TARGET_FILE
     fi
 done
@@ -215,7 +217,28 @@ echo "---- distributing $TARGET_FILE"
 for BOXDIR in boxes/*; do
     ROLE=$(cat $BOXDIR/role)
     if [[ $ROLE == "yadtshell" ]]; then
+        echo "------ adding target file to $BOXDIR"
         cp $TARGET_FILE $BOXDIR
     fi
 done
 
+
+
+echo
+echo "-- checking user environment"
+echo "---- checking ssh identity"
+if ! ssh-add -L | grep vagrant > /dev/null; then
+    echo "------ WARNING: ssh agent does not know the vagrant identity."
+    echo "------          Consider calling 'ssh-add vagrant', otherwise"
+    echo "------          the passwordless ssh-access will not work most probably."
+fi
+
+SSH_TEST_BOX=$(ls -1 boxes/ | head -n 1)
+echo "---- checking agent-forwarding (against box $SSH_TEST_BOX)"
+if ! ssh -o BatchMode=yes $SSH_TEST_BOX "ssh-add -L" 2> /dev/null; then
+    echo "------ WARNING: ssh agent-forwarding not activated for (at least) $SSH_TEST_BOX."
+    echo "------          Remember to use 'ssh -A ...' when accessing your boxes."
+fi
+
+echo
+echo "-- done."
