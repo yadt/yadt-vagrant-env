@@ -152,26 +152,26 @@ if [[ -z $BOX_FOUND ]]; then
     exit 0
 fi
 
-echo
-echo "-- configuring hostname resolution"
-echo "---- removing all old host/ip mappings with network $NET_PREFIX"
-TMP_HOSTS=tmp/hosts
-rm -f $TMP_HOSTS && sed "/$NET_PREFIX/d" /etc/hosts > $TMP_HOSTS
-
-echo "---- adding boxes to /etc/hosts"
-for BOXDIR in boxes/*; do
-    [[ -d $BOXDIR ]] || continue
-    IP=$(cat $BOXDIR/ip)
-    BOXNAME=$(basename $BOXDIR)
-    echo "------ adding mapping $BOXNAME - $IP"
-    sed -i "$ a $IP\t$BOXNAME\t\# auto-added by $SCRIPT" $TMP_HOSTS
-done
-
-if ! diff tmp/hosts /etc/hosts > /dev/null; then
-    echo "---- entering superuser context"
-    sudo -p "---- installing modified /etc/hosts, superuser help required: " cp tmp/hosts /etc/hosts
-    echo "---- leaving superuser context"
-fi
+#echo
+#echo "-- configuring hostname resolution"
+#echo "---- removing all old host/ip mappings with network $NET_PREFIX"
+#TMP_HOSTS=tmp/hosts
+#rm -f $TMP_HOSTS && sed "/$NET_PREFIX/d" /etc/hosts > $TMP_HOSTS
+#
+#echo "---- adding boxes to /etc/hosts"
+#for BOXDIR in boxes/*; do
+#    [[ -d $BOXDIR ]] || continue
+#    IP=$(cat $BOXDIR/ip)
+#    BOXNAME=$(basename $BOXDIR)
+#    echo "------ adding mapping $BOXNAME - $IP"
+#    sed -i "$ a $IP\t$BOXNAME\t\# auto-added by $SCRIPT" $TMP_HOSTS
+#done
+#
+#if ! diff tmp/hosts /etc/hosts > /dev/null; then
+#    echo "---- entering superuser context"
+#    sudo -p "---- installing modified /etc/hosts, superuser help required: " cp tmp/hosts /etc/hosts
+#    echo "---- leaving superuser context"
+#fi
 
 if [[ -e $HOME/.ssh/known_hosts ]]; then
     echo
