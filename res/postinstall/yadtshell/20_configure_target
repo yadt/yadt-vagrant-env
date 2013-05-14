@@ -4,3 +4,4 @@ set -u -e -E
 USERNAME=${1:?USERNAME not given!}
 
 ln -sf /vagrant/target /home/$USERNAME/target
+ln -sf /vagrant/target /home/vagrant/target

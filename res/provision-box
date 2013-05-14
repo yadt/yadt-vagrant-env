@@ -37,6 +37,10 @@ cat $PUB_KEY >> $AUTH_KEYS
 chown -R $USERNAME $SSH_DIR
 
 echo
+echo  "-- modifying /etc/hosts"
+rm -f /etc/hosts && ln -s /vagrant/hosts /etc/hosts
+
+echo
 echo "-- applying custom postinstall scripts"
 for STAGE in all $ROLES; do
     echo "---- postinstall stage $STAGE"

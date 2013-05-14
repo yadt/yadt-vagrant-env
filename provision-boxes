@@ -153,26 +153,25 @@ if [[ -z $BOX_FOUND ]]; then
     exit 0
 fi
 
-#echo
-#echo "-- configuring hostname resolution"
-#echo "---- removing all old host/ip mappings with network $NET_PREFIX"
-#TMP_HOSTS=tmp/hosts
-#rm -f $TMP_HOSTS && sed "/$NET_PREFIX/d" /etc/hosts > $TMP_HOSTS
-#
-#echo "---- adding boxes to /etc/hosts"
-#for BOXDIR in boxes/*; do
-#    [[ -d $BOXDIR ]] || continue
-#    IP=$(cat $BOXDIR/ip)
-#    BOXNAME=$(basename $BOXDIR)
-#    echo "------ adding mapping $BOXNAME - $IP"
-#    sed -i "$ a $IP\t$BOXNAME\t\# auto-added by $SCRIPT" $TMP_HOSTS
-#done
-#
-#if ! diff tmp/hosts /etc/hosts > /dev/null; then
-#    echo "---- entering superuser context"
-#    sudo -p "---- installing modified /etc/hosts, superuser help required: " cp tmp/hosts /etc/hosts
-#    echo "---- leaving superuser context"
-#fi
+echo
+echo "-- configuring hostname resolution"
+TMP_HOSTS=tmp/hosts
+rm -f $TMP_HOSTS
+
+echo "---- adding boxes to each other's hosts file"
+for BOXDIR in boxes/*; do
+    [[ -d $BOXDIR ]] || continue
+    IP=$(cat $BOXDIR/ip)
+    BOXNAME=$(basename $BOXDIR)
+    echo "------ adding mapping $BOXNAME - $IP"
+    echo "$IP    $BOXNAME" >> $TMP_HOSTS
+done
+
+for BOXDIR in boxes/*; do
+    echo "------ distributing hosts to $BOXDIR"
+    cp $TMP_HOSTS $BOXDIR
+done
+
 
 if [[ -e $HOME/.ssh/known_hosts ]]; then
     echo
@@ -232,13 +231,6 @@ if ! ssh-add -L | grep vagrant > /dev/null; then
     echo "------ WARNING: ssh agent does not know the vagrant identity."
     echo "------          Consider calling 'ssh-add vagrant', otherwise"
     echo "------          the passwordless ssh-access will not work most probably."
-fi
-
-SSH_TEST_BOX=$(ls -1 boxes/ | head -n 1)
-echo "---- checking agent-forwarding (against box $SSH_TEST_BOX)"
-if ! ssh -o BatchMode=yes $SSH_TEST_BOX "ssh-add -L" 2> /dev/null; then
-    echo "------ WARNING: ssh agent-forwarding not activated for (at least) $SSH_TEST_BOX."
-    echo "------          Remember to use 'ssh -A ...' when accessing your boxes."
 fi
 
 echo
