@@ -69,7 +69,7 @@ IMAGES=($(find cache -name "*.box"))
 if [[ ${#IMAGES[@]} == 0 ]]; then
     echo "---- no images found in cache/, loading fallback image"
     IMAGE_FILENAME=$CACHE_DIR/$(basename $FALLBACK_IMAGE_URL)
-    curl --retry 3 -# -o $IMAGE_FILENAME $FALLBACK_IMAGE_URL
+    curl --retry 3 -s -o $IMAGE_FILENAME $FALLBACK_IMAGE_URL
 else
     IMAGE_FILENAME=$PWD/${IMAGES[0]}
     echo "---- selecting $IMAGE_FILENAME"
