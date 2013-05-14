@@ -23,6 +23,8 @@ groupadd admins || :
 adduser -G admins $USERNAME || :
 echo vagrant | sudo passwd --stdin $USERNAME
 #echo "---- when everything goes wrong: the password of $USERNAME is 'vagrant'"
+echo "--- username: vagrant"
+usermod -a -G admins vagrant
 
 echo
 echo "-- configuring passwordless ssh access"
