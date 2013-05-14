@@ -132,6 +132,7 @@ Vagrant.configure("2") do |config|
   config.vm.hostname = "$BOXNAME"
   config.vm.synced_folder "$REPO_DIR", "/repo"
   config.vm.provision :shell, :path => "provision-box", :args => "$USER $ROLE"
+  config.ssh.forward_agent = true
 end
 VAGRANTFILE
         )
