@@ -2,8 +2,8 @@
 set -u -e -E -C -o pipefail
 
 SCRIPT=$(basename $0)
-#FALLBACK_IMAGE_URL="http://developer.nrel.gov/downloads/vagrant-boxes/CentOS-6.4-x86_64-v20130309.box"
-FALLBACK_IMAGE_URL="https://dl.dropboxusercontent.com/s/phajfro2lb4h9qj/centos64-x86_64.box"
+#FALLBACK_IMAGE_URL="https://dl.dropboxusercontent.com/s/phajfro2lb4h9qj/centos64-x86_64.box"
+FALLBACK_IMAGE_URL="https://www.dropbox.com/s/44z2j6lllso31dl/sl6-ga.box"
 NET_PREFIX_FILE=net-prefix
 LOG_FILE=$(pwd)/logs/$SCRIPT.log
 RES_DIR=$(pwd)/res
