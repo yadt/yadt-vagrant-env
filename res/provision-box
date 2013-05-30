@@ -16,7 +16,7 @@ PUB_KEY=/vagrant/vagrant.pub
 echo "-- initializing environment/repos"
 cp -r /vagrant/init-root/* /
 
-source /etc/profile
+source ~/.bashrc
 
 echo
 echo "-- adding user/group"
