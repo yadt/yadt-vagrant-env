@@ -16,7 +16,7 @@ PUB_KEY=/vagrant/vagrant.pub
 echo "-- initializing environment/repos"
 cp -r /vagrant/init-root/* /
 
-source ~/.bashrc
+[[ -f /etc/profile.d/proxy_env.sh ]] && source /etc/profile.d/proxy_env.sh
 
 echo
 echo "-- adding user/group"
