@@ -15,6 +15,7 @@ PUB_KEY=/vagrant/vagrant.pub
 
 echo "-- initializing environment/repos"
 cp -r /vagrant/init-root/* /
+sudo chmod 440 /etc/sudoers.d/admins
 
 [[ -f /etc/profile.d/proxy_env.sh ]] && source /etc/profile.d/proxy_env.sh
 
